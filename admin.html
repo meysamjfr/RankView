@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>پنل ادمین مسابقه</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#7e57c2'
+                    },
+                    fontFamily: {
+                        vazir: ['Vazir', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet">
+</head>
+
+<body class="font-vazir bg-gray-100 p-4">
+    <h1 class="text-3xl font-bold text-center text-primary mb-6">پنل مدیریت مسابقه</h1>
+
+    <form id="solveForm" class="bg-white p-4 rounded shadow my-6 max-w-xl mx-auto">
+        <h2 class="text-xl font-bold mb-4">ثبت زمان حل سوال</h2>
+        <div class="mb-4">
+            <label class="block mb-1">تیم:</label>
+            <select id="teamSelect" class="w-full border rounded px-3 py-2"></select>
+        </div>
+        <div class="mb-4">
+            <label class="block mb-1">شماره سوال:</label>
+            <input type="number" id="questionNumber" class="w-full border rounded px-3 py-2" min="1">
+        </div>
+        <div class="mb-4">
+            <label class="block mb-1">مدت زمان (دقیقه:ثانیه):</label>
+            <input type="text" id="timeTaken" class="w-full border rounded px-3 py-2" placeholder="مثلاً 02:30">
+        </div>
+        <button type="submit" class="bg-primary text-white px-4 py-2 rounded">ثبت پاسخ</button>
+    </form>
+
+    <form id="setupForm" class="bg-white p-4 rounded shadow my-6 max-w-xl mx-auto">
+        <h2 class="text-xl font-bold mb-4">تنظیمات اولیه مسابقه</h2>
+        <div class="mb-4">
+            <label class="block mb-1">تعداد سوالات:</label>
+            <input type="number" id="questionCount" class="w-full border rounded px-3 py-2" min="1" value="10">
+        </div>
+        <div class="mb-4">
+            <label class="block mb-1">نام تیم‌ها (هر خط یک تیم):</label>
+            <textarea id="teamNames" class="w-full border rounded px-3 py-2" rows="5">تیم 1
+تیم 2
+تیم 3
+تیم 4
+تیم 5</textarea>
+        </div>
+        <button type="submit" class="bg-primary text-white px-4 py-2 rounded">ثبت</button>
+    </form>
+
+    <script>
+        const setupForm = document.getElementById("setupForm");
+        const solveForm = document.getElementById("solveForm");
+        const teamSelect = document.getElementById("teamSelect");
+
+
+        function loadTeams() {
+            const contestData = JSON.parse(localStorage.getItem("contestData")) || {};
+            teamSelect.innerHTML = '';
+            Object.keys(contestData).forEach(team => {
+                const option = document.createElement("option");
+                option.value = team;
+                option.textContent = team;
+                teamSelect.appendChild(option);
+            });
+        }
+
+        setupForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            if (!confirm("آیا از ریست کامل اطلاعات مطمئن هستید؟")) return;
+
+            const questionCount = parseInt(document.getElementById("questionCount").value);
+            const teams = document.getElementById("teamNames").value.trim().split("\n").map(t => t.trim()).filter(t => t);
+
+            const contestData = {};
+            teams.forEach(name => {
+                contestData[name] = {};
+                for (let i = 1; i <= questionCount; i++) {
+                    contestData[name][i] = 0;
+                }
+            });
+
+            localStorage.setItem("contestData", JSON.stringify(contestData));
+            localStorage.setItem("questionCount", questionCount);
+
+            loadTeams();
+            alert("تنظیمات با موفقیت ذخیره شد و اطلاعات قبلی پاک شد!");
+        });
+
+        solveForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const team = document.getElementById("teamSelect").value;
+            const question = parseInt(document.getElementById("questionNumber").value);
+            const time = document.getElementById("timeTaken").value;
+            const min = time.split(":")[0] || 0;
+            const sec = time.split(":")[1] || 0;
+            const totalSeconds = +min * 60 + +sec;
+
+            const contestData = JSON.parse(localStorage.getItem("contestData"));
+            if (contestData && contestData[team] && question) {
+                contestData[team][question] = totalSeconds;
+                localStorage.setItem("contestData", JSON.stringify(contestData));
+                alert("پاسخ با موفقیت ثبت شد!");
+            } else {
+                alert("خطا در ثبت پاسخ");
+            }
+        });
+
+        loadTeams();
+    </script>
+</body>
+
+</html>

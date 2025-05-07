@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>نمایش نتایج مسابقه</title>
+
+    <link href="/assets/styles.css" rel="stylesheet" />
+    <link href="/assets/flipclock.css" rel="stylesheet" />
+    <script src="/assets/jquery.js"></script>
+    <script src="/assets/flipclock.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#7e57c2'
+                    },
+                    fontFamily: {
+                        vazir: ['Vazir', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+</head>
+
+<body class="font-vazir bg-gray-100 p-4">
+    <div class="flex justify-center items-center gap-8 my-6">
+        <div class="w-1/2 flex flex-col items-center bg-white p-4 rounded shadow">
+            <div id="live-clock" class=""></div>
+        </div>
+        <div class="w-1/2 flex flex-col items-center bg-white p-4 rounded shadow">
+            <div id="countdown-timer" class=""></div>
+        </div>
+    </div>
+
+    <h1 class="text-3xl font-bold text-center text-primary mb-6">جدول نتایج مسابقه</h1>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white rounded shadow text-center">
+            <thead class="bg-primary text-white">
+                <tr>
+                    <th class="px-4 py-2">رتبه</th>
+                    <th class="px-4 py-2">تیم</th>
+                    <th class="px-4 py-2">سوال 1</th>
+                    <th class="px-4 py-2">سوال 2</th>
+                    <th class="px-4 py-2">سوال 3</th>
+                    <th class="px-4 py-2">سوال 4</th>
+                    <th class="px-4 py-2">سوال 5</th>
+                    <th class="px-4 py-2">سوال 6</th>
+                    <th class="px-4 py-2">سوال 7</th>
+                    <th class="px-4 py-2">سوال 8</th>
+                    <th class="px-4 py-2">سوال 9</th>
+                    <th class="px-4 py-2">سوال 10</th>
+                    <th class="px-4 py-2">مجموع زمان</th>
+                    <th class="px-4 py-2">مجموع سوالات</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+        </table>
+    </div>
+    <script>
+        var clock;
+        var countdown;
+
+        $(document).ready(function () {
+            clock = $('#live-clock').FlipClock({
+                clockFace: 'TwentyFourHourClock'
+            });
+        });
+        $(document).ready(function () {
+
+            // Grab the current date
+            var currentDate = new Date();
+
+            // Set some date in the future. In this case, it's always Jan 1
+            var futureDate = new Date();
+            futureDate.setHours(futureDate.getHours() + 2);
+
+            // Calculate the difference in seconds between the future and current date
+            var diff = futureDate.getTime() / 1000 - currentDate.getTime() / 1000;
+
+            // Instantiate a coutdown FlipClock
+            countdown = $('#countdown-timer').FlipClock(diff, {
+                clockFace: 'HourlyCounter'
+            });
+        });
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            const res = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            return res;
+        }
+
+        function renderTable() {
+            const data = JSON.parse(localStorage.getItem("contestData") || "{}");
+            const teams = Object.entries(data).map(([team, answers]) => {
+                let totalSolved = 0;
+                let totalTime = 0;
+                const questions = [];
+                for (let i = 1; i <= 10; i++) {
+                    const seconds = answers[i] || 0;
+                    if (seconds > 0) {
+                        totalSolved++;
+                        totalTime += seconds;
+                    }
+                    questions.push(formatTime(seconds));
+                }
+                return { team, questions, totalSolved, totalTime };
+            });
+
+            teams.sort((a, b) => {
+                if (b.totalSolved !== a.totalSolved) return b.totalSolved - a.totalSolved;
+                return a.totalTime - b.totalTime;
+            });
+
+            const body = document.getElementById("resultsBody");
+            body.innerHTML = "";
+            teams.forEach((t, i) => {
+                const rank = t.totalSolved > 0 ? `
+          ${i === 0 ? '<span class="text-yellow-500 inline-flex items-center gap-1">🥇 اول</span>' :
+                        i === 1 ? '<span class="text-gray-500 inline-flex items-center gap-1">🥈 دوم</span>' :
+                            i === 2 ? '<span class="text-orange-400 inline-flex items-center gap-1">🥉 سوم</span>' : ''}` : "";
+
+                const row = `<tr class="border-b">
+          <td class="px-4 py-2">${rank}</td>
+          <td class="px-4 py-2 font-bold">${t.team}</td>
+          ${t.questions.map(q => `<td class="px-2 py-2">${q}</td>`).join('')}
+          <td class="px-4 py-2 font-medium">${formatTime(t.totalTime)}</td>
+          <td class="px-4 py-2">${t.totalSolved}</td>
+        </tr>`;
+                body.insertAdjacentHTML("beforeend", row);
+            });
+        }
+
+        renderTable();
+        setInterval(renderTable, 3000);
+    </script>
+</body>
+
+</html>
