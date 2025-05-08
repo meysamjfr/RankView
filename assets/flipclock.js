@@ -2396,6 +2396,33 @@ var FlipClock;
     FlipClock.Lang['arabic']  = FlipClock.Lang.Arabic;
 
 }(jQuery));
+(function ($) {
+
+	/**
+	 * FlipClock Farsi Language Pack
+	 *
+	 * This class will be used to translate tokens into the Farsi language.
+	 *
+	 */
+
+	FlipClock.Lang.Farsi = {
+
+		'years': 'سال',
+		'months': 'ماه',
+		'days': 'روز',
+		'hours': 'ساعت',
+		'minutes': 'دقیقه',
+		'seconds': 'ثانیه'
+
+	};
+
+	/* Create various aliases for convenience */
+
+	FlipClock.Lang['fa'] = FlipClock.Lang.Farsi;
+	FlipClock.Lang['fa-ir'] = FlipClock.Lang.Farsi;
+	FlipClock.Lang['farsi'] = FlipClock.Lang.Farsi;
+
+}(jQuery));
 (function($) {
 		
 	/**

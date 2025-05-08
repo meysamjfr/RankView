@@ -24,16 +24,35 @@
             }
         }
     </script>
+    <style>
+        .flip-clock-label {
+            display: none;
+        }
 
+        .flip-clock-wrapper {
+            width: unset;
+        }
+
+        #countdown-timer.flip-clock-wrapper ul li a div div.inn {
+            background-color: #7e57c2;
+        }
+    </style>
 </head>
 
 <body class="font-vazir bg-gray-100 p-4">
     <div class="flex justify-center items-center gap-8 my-6">
-        <div class="w-1/2 flex flex-col items-center bg-white p-4 rounded shadow">
+        <div class="w-1/2 flex flex-col items-center bg-gray-200 p-4 rounded shadow">
+            <h2 class="text-3xl font-bold text-center">ساعت</h2>
             <div id="live-clock" class=""></div>
         </div>
-        <div class="w-1/2 flex flex-col items-center bg-white p-4 rounded shadow">
+        <div class="w-1/2 flex flex-col items-center bg-purple-200 p-4 rounded shadow" id="countdown-timer-container">
+            <h2 class="text-3xl font-bold text-center text-primary">زمان باقی‌مانده</h2>
             <div id="countdown-timer" class=""></div>
+        </div>
+        <div class="w-1/2 flex flex-col items-center bg-purple-200 p-4 rounded shadow" style="display: none;"
+            id="countdown-timer-finished">
+            <h2 class="text-3xl font-bold text-center text-primary">پایان مسابقه</h2>
+            <h2 class="text-3xl font-bold text-center text-primary">خسته نباشید</h2>
         </div>
     </div>
 
@@ -64,6 +83,9 @@
     <script>
         var clock;
         var countdown;
+        var countdown_started = false;
+        var countdown_enabled = parseInt(localStorage.getItem("countdown_enabled"));
+
 
         $(document).ready(function () {
             clock = $('#live-clock').FlipClock({
@@ -71,21 +93,28 @@
             });
         });
         $(document).ready(function () {
-
-            // Grab the current date
-            var currentDate = new Date();
-
-            // Set some date in the future. In this case, it's always Jan 1
-            var futureDate = new Date();
-            futureDate.setHours(futureDate.getHours() + 2);
-
-            // Calculate the difference in seconds between the future and current date
-            var diff = futureDate.getTime() / 1000 - currentDate.getTime() / 1000;
-
-            // Instantiate a coutdown FlipClock
-            countdown = $('#countdown-timer').FlipClock(diff, {
-                clockFace: 'HourlyCounter'
+            const defaultTime = 7200;
+            let savedTime = parseInt(localStorage.getItem("countdown_time"));
+            if (isNaN(savedTime) || savedTime <= 0) {
+                savedTime = defaultTime;
+            }
+            countdown = $('#countdown-timer').FlipClock({
+                clockFace: 'HourlyCounter',
+                autoStart: false,
+                countdown: true,
+                language: 'fa',
+                callbacks: {
+                    interval: function () {
+                        const time = this.factory.getTime().time;
+                        localStorage.setItem("countdown_time", time);
+                        if (time <= 0) {
+                            $('#countdown-timer-container').hide();
+                            $('#countdown-timer-finished').show();
+                        }
+                    }
+                }
             });
+            countdown.setTime(savedTime);
         });
 
         function formatTime(seconds) {
@@ -138,6 +167,18 @@
 
         renderTable();
         setInterval(renderTable, 3000);
+        setInterval(() => {
+            console.log(localStorage.getItem("countdown_enabled"));
+            countdown_enabled = parseInt(localStorage.getItem("countdown_enabled"));
+            if (countdown_enabled == 1 && countdown_started == false) {
+                countdown_started = true;
+                countdown.start();
+            }
+            if (countdown_started == true && countdown_enabled != 1) {
+                countdown_started = false;
+                countdown.stop();
+            }
+        }, 1000);
     </script>
 </body>
 
