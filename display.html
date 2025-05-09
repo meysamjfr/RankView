@@ -21,7 +21,7 @@
                         vazir: ['Vazir', 'sans-serif']
                     }
                 }
-            }
+            },
         }
     </script>
     <style>
@@ -35,6 +35,25 @@
 
         #countdown-timer.flip-clock-wrapper ul li a div div.inn {
             background-color: #7e57c2;
+        }
+
+        @keyframes bg-blue-blink {
+
+            0%,
+            100% {
+                background-color: #bfdbfe;
+            }
+
+            /* bg-blue-100 */
+            50% {
+                background-color: #60a5fa;
+            }
+
+            /* bg-blue-300 */
+        }
+
+        .bg-blue-blink {
+            animation: bg-blue-blink 3s ease-in-out infinite;
         }
     </style>
 </head>
@@ -53,6 +72,11 @@
             id="countdown-timer-finished">
             <h2 class="text-3xl font-bold text-center text-primary">پایان مسابقه</h2>
             <h2 class="text-3xl font-bold text-center text-primary">خسته نباشید</h2>
+        </div>
+        <div class="w-1/2 flex flex-col items-center bg-purple-200 p-4 rounded shadow" style="display: none;"
+            id="countdown-timer-not-started">
+            <h2 class="text-3xl font-bold text-center text-primary">در انتظار</h2>
+            <h2 class="text-3xl font-bold text-center text-primary">شروع مسابقه</h2>
         </div>
     </div>
 
@@ -73,7 +97,7 @@
                     <th class="px-4 py-2">سوال 8</th>
                     <th class="px-4 py-2">سوال 9</th>
                     <th class="px-4 py-2">سوال 10</th>
-                    <th class="px-4 py-2">مجموع زمان</th>
+                    <th class="px-4 py-2">زمان</th>
                     <th class="px-4 py-2">مجموع سوالات</th>
                 </tr>
             </thead>
@@ -81,40 +105,56 @@
         </table>
     </div>
     <script>
-        var clock;
-        var countdown;
-        var countdown_started = false;
-        var countdown_enabled = parseInt(localStorage.getItem("countdown_enabled"));
+        let clock;
+        let countdown;
 
+        function getRemainingTime() {
+            const endTime = localStorage.getItem("end_time");
+            if (!endTime) return 0;
+            const now = new Date();
+            const [hours, minutes] = endTime.split(':').map(Number);
+            const dateWithTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+            const diffSeconds = Math.floor((new Date(dateWithTime) - now) / 1000);
+            return diffSeconds > 0 ? diffSeconds : 0;
+        }
+
+        function contestStarted() {
+            const startTime = localStorage.getItem("start_time");
+            if (!startTime) return false;
+            const now = new Date();
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const dateWithTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+            return new Date() >= new Date(dateWithTime);
+        }
 
         $(document).ready(function () {
             clock = $('#live-clock').FlipClock({
                 clockFace: 'TwentyFourHourClock'
             });
-        });
-        $(document).ready(function () {
-            const defaultTime = 7200;
-            let savedTime = parseInt(localStorage.getItem("countdown_time"));
-            if (isNaN(savedTime) || savedTime <= 0) {
-                savedTime = defaultTime;
-            }
-            countdown = $('#countdown-timer').FlipClock({
+            const savedTime = parseInt(getRemainingTime());
+            countdown = $('#countdown-timer').FlipClock(savedTime, {
                 clockFace: 'HourlyCounter',
                 autoStart: false,
                 countdown: true,
                 language: 'fa',
                 callbacks: {
-                    interval: function () {
-                        const time = this.factory.getTime().time;
-                        localStorage.setItem("countdown_time", time);
-                        if (time <= 0) {
-                            $('#countdown-timer-container').hide();
-                            $('#countdown-timer-finished').show();
-                        }
+                    stop: function () {
+                        $('#countdown-timer-container').hide();
+                        $('#countdown-timer-finished').show();
                     }
                 }
             });
-            countdown.setTime(savedTime);
+            if (contestStarted()) {
+                countdown.start();
+            }
+            else if (getRemainingTime() > 0) {
+                $('#countdown-timer-container').hide();
+                $('#countdown-timer-not-started').show();
+            }
+            if (getRemainingTime() == 0) {
+                $('#countdown-timer-container').hide();
+                $('#countdown-timer-finished').show();
+            }
         });
 
         function formatTime(seconds) {
@@ -126,24 +166,44 @@
 
         function renderTable() {
             const data = JSON.parse(localStorage.getItem("contestData") || "{}");
+            const [startHour, startMin] = (localStorage.getItem("start_time") || "00:00").split(":").map(Number);
+            const [endHour, endMin] = (localStorage.getItem("end_time") || "23:59").split(":").map(Number);
             const teams = Object.entries(data).map(([team, answers]) => {
                 let totalSolved = 0;
-                let totalTime = 0;
+                let lastSolveTime = '00:00';
                 const questions = [];
                 for (let i = 1; i <= 10; i++) {
-                    const seconds = answers[i] || 0;
-                    if (seconds > 0) {
-                        totalSolved++;
-                        totalTime += seconds;
+                    let solveTime = answers[i][0];
+                    let solveStatus = answers[i][1];
+                    if (!solveTime || solveTime === "0") {
+                        questions.push("---");
+                        continue;
                     }
-                    questions.push(formatTime(seconds));
+                    if (solveStatus == 'accepted') {
+                        let [solveHour, solveMin] = solveTime.split(":").map(Number);
+                        let [lastSolveHour, lastSolveMin] = lastSolveTime.split(":").map(Number);
+                        let solveSeconds = solveHour * 3600 + solveMin * 60;
+                        let lastSolveSeconds = lastSolveHour * 3600 + lastSolveMin * 60;
+                        let startSeconds = startHour * 3600 + startMin * 60;
+                        let endSeconds = endHour * 3600 + endMin * 60;
+                        let deltaSeconds = solveSeconds - startSeconds;
+                        if (lastSolveSeconds < solveSeconds) {
+                            lastSolveTime = solveTime;
+                        }
+                        totalSolved++;
+                    }
+                    questions.push([solveTime, solveStatus]);
                 }
-                return { team, questions, totalSolved, totalTime };
+                return { team, questions, totalSolved, lastSolveTime };
             });
 
             teams.sort((a, b) => {
                 if (b.totalSolved !== a.totalSolved) return b.totalSolved - a.totalSolved;
-                return a.totalTime - b.totalTime;
+                let [lastSolveHourA, lastSolveMinA] = a.lastSolveTime.split(":").map(Number);
+                let lastSolveSecondsA = lastSolveHourA * 3600 + lastSolveMinA * 60;
+                let [lastSolveHourB, lastSolveMinB] = b.lastSolveTime.split(":").map(Number);
+                let lastSolveSecondsB = lastSolveHourB * 3600 + lastSolveMinB * 60;
+                return lastSolveSecondsA - lastSolveSecondsB;
             });
 
             const body = document.getElementById("resultsBody");
@@ -157,8 +217,25 @@
                 const row = `<tr class="border-b">
           <td class="px-4 py-2">${rank}</td>
           <td class="px-4 py-2 font-bold">${t.team}</td>
-          ${t.questions.map(q => `<td class="px-2 py-2">${q}</td>`).join('')}
-          <td class="px-4 py-2 font-medium">${formatTime(t.totalTime)}</td>
+          ${t.questions.map(q => {
+                    let color = "";
+                    switch (q[1]) {
+                        case 'accepted':
+                            color = "bg-green-200 ";
+                            break;
+                        case 'rejected':
+                            color = "bg-red-200";
+                            break;
+
+                        case 'pending':
+                            color = "bg-blue-blink";
+                            break;
+                        default:
+                            break;
+                    }
+                    return `<td class="px-2 py-2 ${color} text-black">${q[0]}</td>`;
+                }).join('')}
+          <td class="px-4 py-2 font-medium">${t.lastSolveTime}</td>
           <td class="px-4 py-2">${t.totalSolved}</td>
         </tr>`;
                 body.insertAdjacentHTML("beforeend", row);
@@ -167,18 +244,6 @@
 
         renderTable();
         setInterval(renderTable, 3000);
-        setInterval(() => {
-            console.log(localStorage.getItem("countdown_enabled"));
-            countdown_enabled = parseInt(localStorage.getItem("countdown_enabled"));
-            if (countdown_enabled == 1 && countdown_started == false) {
-                countdown_started = true;
-                countdown.start();
-            }
-            if (countdown_started == true && countdown_enabled != 1) {
-                countdown_started = false;
-                countdown.stop();
-            }
-        }, 1000);
     </script>
 </body>
 
